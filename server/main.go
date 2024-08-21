@@ -3,13 +3,15 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
+	"os"
+	"time"
+
 	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/cron_server"
 	"github.com/Jinnrry/pmail/res_init"
 	"github.com/Jinnrry/pmail/utils/context"
 	log "github.com/sirupsen/logrus"
-	"os"
-	"time"
 )
 
 type logFormatter struct {
@@ -61,6 +63,7 @@ func main() {
 			log.SetLevel(log.InfoLevel)
 		case "debug":
 			log.SetLevel(log.DebugLevel)
+			slog.SetLogLoggerLevel(slog.LevelDebug)
 		case "info":
 			log.SetLevel(log.InfoLevel)
 		case "warn":

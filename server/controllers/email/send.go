@@ -4,6 +4,11 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/db"
 	"github.com/Jinnrry/pmail/dto/parsemail"
@@ -18,10 +23,6 @@ import (
 	"github.com/Jinnrry/pmail/utils/send"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
-	"io"
-	"net/http"
-	"strings"
-	"time"
 )
 
 type sendRequest struct {
@@ -33,6 +34,7 @@ type sendRequest struct {
 	Subject     string       `json:"subject"`
 	Text        string       `json:"text"`   // Plaintext message (optional)
 	HTML        string       `json:"html"`   // Html message (optional)
+	Date        string       `json:"date"`   // 自定义的发送时间：time.DateTime
 	Sender      user         `json:"sender"` // override From as SMTP envelope sender (optional)
 	ReadReceipt []string     `json:"read_receipt"`
 	Attachments []attachment `json:"attrs"`
@@ -139,7 +141,7 @@ func Send(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 			EmailAddress: reqData.From.Email,
 		}
 	}
-
+	e.Date = reqData.Date
 	e.Text = []byte(reqData.Text)
 	e.HTML = []byte(reqData.HTML)
 	e.Subject = reqData.Subject
@@ -171,6 +173,13 @@ func Send(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 	}
 	log.WithContext(ctx).Debugf("插件执行--SendBefore End")
 
+	sendTime := time.Now()
+	if e.Date != "" {
+		if st, err := time.ParseInLocation(time.DateTime, e.Date, time.Local); err == nil {
+			sendTime = st
+		}
+	}
+
 	modelEmail := models.Email{
 		Type:         1,
 		Subject:      e.Subject,
@@ -187,16 +196,16 @@ func Send(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 		SPFCheck:     1,
 		DKIMCheck:    1,
 		SendUserID:   ctx.UserID,
-		SendDate:     time.Now(),
-		CronSendTime: time.Now(),
+		SendDate:     sendTime,
+		CronSendTime: sendTime,
 		Status:       1,
-		CreateTime:   time.Now(),
+		CreateTime:   sendTime,
 	}
 
 	_, err = db.Instance.Insert(&modelEmail)
 
 	if err != nil || modelEmail.Id <= 0 {
-		log.Println("insert error:", err.Error())
+		log.Println("insert error: ", err)
 		response.NewErrorResponse(response.ServerError, i18n.GetText(ctx.Lang, "send_fail"), err.Error()).FPrint(w)
 		return
 	}

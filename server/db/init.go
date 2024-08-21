@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/models"
 	"github.com/Jinnrry/pmail/utils/context"
@@ -25,7 +26,7 @@ func Init(version string) error {
 		Instance.SetMaxOpenConns(100)
 		Instance.SetMaxIdleConns(10)
 	case "sqlite":
-		Instance, err = xorm.NewEngine("sqlite", dsn)
+		Instance, err = xorm.NewEngine("sqlite", dsn) // 7XbpWfVTRPz1cIxK
 		Instance.SetMaxOpenConns(1)
 		Instance.SetMaxIdleConns(1)
 	case "postgres":

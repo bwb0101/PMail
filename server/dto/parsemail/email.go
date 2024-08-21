@@ -3,17 +3,18 @@ package parsemail
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"net/textproto"
+	"regexp"
+	"strings"
+	"time"
+
 	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/utils/context"
 	"github.com/emersion/go-message"
 	_ "github.com/emersion/go-message/charset"
 	"github.com/emersion/go-message/mail"
 	log "github.com/sirupsen/logrus"
-	"io"
-	"net/textproto"
-	"regexp"
-	"strings"
-	"time"
 )
 
 type User struct {
@@ -285,7 +286,7 @@ func (e *Email) BuildBytes(ctx *context.Context, dkim bool) []byte {
 	// Create our mail header
 	var h mail.Header
 	if e.Date != "" {
-		t, err := time.ParseInLocation("2006-01-02 15:04:05", e.Date, time.Local)
+		t, err := time.ParseInLocation(time.DateTime, e.Date, time.Local)
 		if err != nil {
 			log.WithContext(ctx).Errorf("Time Error ! Err:%+v", err)
 			h.SetDate(time.Now())

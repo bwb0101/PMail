@@ -4,6 +4,13 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"io"
+	"math/rand/v2"
+	"net"
+	"net/netip"
+	"strings"
+	"time"
+
 	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/db"
 	"github.com/Jinnrry/pmail/dto/parsemail"
@@ -18,11 +25,6 @@ import (
 	"github.com/mileusna/spf"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
-	"io"
-	"net"
-	"net/netip"
-	"strings"
-	"time"
 	. "xorm.io/builder"
 )
 
@@ -55,8 +57,8 @@ func (s *Session) Data(r io.Reader) error {
 		}
 		if email.From.EmailAddress != from.EmailAddress {
 			// 协议中的from和邮件内容中的from不匹配，当成垃圾邮件处理
-			//log.WithContext(s.Ctx).Infof("垃圾邮件，拒信")
-			//return nil
+			// log.WithContext(s.Ctx).Infof("垃圾邮件，拒信")
+			// return nil
 		}
 	}
 
@@ -208,6 +210,13 @@ func saveEmail(ctx *context.Context, size int, email *parsemail.Email, sendUserI
 		return nil, nil
 	}
 
+	recvTime, err := time.ParseInLocation(time.DateTime, email.Date, time.Local)
+	if err != nil {
+		recvTime = time.Now()
+	} else {
+		recvTime = recvTime.Add(time.Second * time.Duration(rand.Int32N(3)+1))
+	}
+
 	modelEmail := models.Email{
 		Type:         cast.ToInt8(emailType),
 		Subject:      email.Subject,
@@ -225,13 +234,13 @@ func saveEmail(ctx *context.Context, size int, email *parsemail.Email, sendUserI
 		SPFCheck:     spfV,
 		DKIMCheck:    dkimV,
 		SendUserID:   sendUserID,
-		SendDate:     time.Now(),
+		SendDate:     recvTime,
 		Status:       cast.ToInt8(email.Status),
-		CreateTime:   time.Now(),
-		CronSendTime: time.Now(),
+		CreateTime:   recvTime,
+		CronSendTime: recvTime,
 	}
 
-	_, err := db.Instance.Insert(&modelEmail)
+	_, err = db.Instance.Insert(&modelEmail)
 
 	if err != nil {
 		log.WithContext(ctx).Errorf("db insert error:%+v", err.Error())
@@ -246,7 +255,7 @@ func saveEmail(ctx *context.Context, size int, email *parsemail.Email, sendUserI
 	// 如果是收信
 	if emailType == 0 {
 		// 找到收信人id
-		accounts := []string{}
+		var accounts []string
 		for _, user := range append(append(email.To, email.Cc...), email.Bcc...) {
 			account, _ := user.GetDomainAccount()
 			if account != "" {
@@ -297,7 +306,7 @@ func json2string(d any) string {
 }
 
 func spfCheck(remoteAddress string, sender *parsemail.User, senderString string) bool {
-	//spf校验
+	// spf校验
 	ipAddress, _ := netip.ParseAddrPort(remoteAddress)
 
 	ip := net.ParseIP(ipAddress.Addr().String())

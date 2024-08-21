@@ -2,6 +2,8 @@ package pop3_server
 
 import (
 	"database/sql"
+	"strings"
+
 	"github.com/Jinnrry/gopop"
 	"github.com/Jinnrry/pmail/consts"
 	"github.com/Jinnrry/pmail/db"
@@ -17,7 +19,6 @@ import (
 	"github.com/Jinnrry/pmail/utils/password"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
-	"strings"
 )
 
 type action struct {
@@ -98,7 +99,7 @@ func (a action) Pass(session *gopop.Session, pwd string) error {
 		session.Ctx = tc
 	}
 
-	log.WithContext(session.Ctx).Debugf("POP3 PASS %s , User:%s", pwd, session.User)
+	log.WithContext(session.Ctx).Debugf("POP3 PASS %s, User:%s", pwd, session.User)
 
 	var user models.User
 
