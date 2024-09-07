@@ -6,14 +6,15 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/utils/consts"
 	"github.com/emersion/go-msgauth/dkim"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ed25519"
-	"io"
-	"os"
-	"strings"
 )
 
 type Dkim struct {
@@ -25,7 +26,7 @@ var instance *Dkim
 func Init() {
 	privateKey, err := loadPrivateKey(config.Instance.DkimPrivateKeyPath)
 	if err != nil {
-		panic("DKIM load fail! Please set dkim!  dkim私钥加载失败！请先设置dkim秘钥")
+		panic("DKIM load fail! Please set dkim! dkim私钥加载失败！请先设置dkim秘钥：" + err.Error())
 	}
 
 	instance = &Dkim{

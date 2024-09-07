@@ -3,6 +3,10 @@ package smtp_server
 import (
 	"crypto/tls"
 	"database/sql"
+	"net"
+	"strings"
+	"time"
+
 	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/db"
 	"github.com/Jinnrry/pmail/models"
@@ -13,9 +17,6 @@ import (
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	log "github.com/sirupsen/logrus"
-	"net"
-	"strings"
-	"time"
 )
 
 // The Backend implements SMTP server methods.
@@ -131,7 +132,7 @@ func StartWithTLS() {
 	instanceTls.Domain = config.Instance.Domain
 	instanceTls.ReadTimeout = 10 * time.Second
 	instanceTls.WriteTimeout = 10 * time.Second
-	instanceTls.MaxMessageBytes = 1024 * 1024 * 30
+	instanceTls.MaxMessageBytes = 1024 * 1024 * 150 // 最大150M附件
 	instanceTls.MaxRecipients = 50
 	// force TLS for auth
 	instanceTls.AllowInsecureAuth = true
@@ -159,7 +160,7 @@ func Start() {
 	instance.Domain = config.Instance.Domain
 	instance.ReadTimeout = 10 * time.Second
 	instance.WriteTimeout = 10 * time.Second
-	instance.MaxMessageBytes = 1024 * 1024 * 30
+	instance.MaxMessageBytes = 1024 * 1024 * 150
 	instance.MaxRecipients = 50
 	// force TLS for auth
 	instance.AllowInsecureAuth = false
