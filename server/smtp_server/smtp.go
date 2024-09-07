@@ -130,8 +130,8 @@ func StartWithTLS() {
 
 	instanceTls.Addr = ":465"
 	instanceTls.Domain = config.Instance.Domain
-	instanceTls.ReadTimeout = 10 * time.Second
-	instanceTls.WriteTimeout = 10 * time.Second
+	instanceTls.ReadTimeout = time.Second * 120
+	instanceTls.WriteTimeout = time.Second * 120
 	instanceTls.MaxMessageBytes = 1024 * 1024 * 150 // 最大150M附件
 	instanceTls.MaxRecipients = 50
 	// force TLS for auth
@@ -158,8 +158,8 @@ func Start() {
 
 	instance.Addr = ":25"
 	instance.Domain = config.Instance.Domain
-	instance.ReadTimeout = 10 * time.Second
-	instance.WriteTimeout = 10 * time.Second
+	instance.ReadTimeout = time.Second * 120
+	instance.WriteTimeout = time.Second * 120
 	instance.MaxMessageBytes = 1024 * 1024 * 150
 	instance.MaxRecipients = 50
 	// force TLS for auth
