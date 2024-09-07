@@ -131,7 +131,7 @@ func formatContent(entity *message.Entity, ret *Email) error {
 		}
 
 		ret.Attachments = append(ret.Attachments, &Attachment{
-			Filename:    fileName,
+			Filename:    strings.ReplaceAll(fileName, `"`, ""),
 			ContentType: contentType,
 			Content:     c,
 			ContentID:   strings.TrimPrefix(strings.TrimSuffix(entity.Header.Get("Content-Id"), ">"), "<"),
