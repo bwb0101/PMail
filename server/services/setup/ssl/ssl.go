@@ -5,6 +5,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/services/setup"
 	"github.com/Jinnrry/pmail/signal"
@@ -14,8 +18,6 @@ import (
 	"github.com/go-acme/lego/v4/challenge/dns01"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
-	"os"
-	"time"
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/lego"
@@ -39,7 +41,7 @@ func (u *MyUser) GetPrivateKey() crypto.PrivateKey {
 }
 
 func GetSSL() string {
-	cfg, err := setup.ReadConfig()
+	cfg, err := config.ReadConfig()
 	if err != nil {
 		panic(err)
 	}
@@ -51,7 +53,7 @@ func GetSSL() string {
 }
 
 func SetSSL(sslType, priKey, crtKey string) error {
-	cfg, err := setup.ReadConfig()
+	cfg, err := config.ReadConfig()
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +70,7 @@ func SetSSL(sslType, priKey, crtKey string) error {
 		cfg.HttpsEnabled = 2
 	}
 
-	err = setup.WriteConfig(cfg)
+	err = config.WriteConfig(cfg)
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -93,6 +95,24 @@ func renewCertificate(privateKey *ecdsa.PrivateKey, cfg *config.Config) error {
 		return errors.Wrap(err)
 	}
 
+	if cfg.SSLType == config.SSLTypeAutoHTTP {
+		err = client.Challenge.SetHTTP01Provider(GetHttpChallengeInstance())
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	} else if cfg.SSLType == config.SSLTypeAutoDNS {
+		err = client.Challenge.SetDNS01Provider(GetDnsChallengeInstance(), dns01.AddDNSTimeout(60*time.Minute))
+		if err != nil {
+			return errors.Wrap(err)
+		}
+
+		log.Errorf("Please Set DNS Record/请将以下内容添加到DNS记录中:\n")
+		for _, item := range GetDnsChallengeInstance().GetDNSSettings(nil) {
+			log.Errorf("Type:%s\tHost:%s\tValue:%s\n", item.Type, item.Host, item.Value)
+		}
+
+	}
+
 	var reg *registration.Resource
 
 	reg, err = client.Registration.ResolveAccountByKey()
@@ -106,6 +126,7 @@ func renewCertificate(privateKey *ecdsa.PrivateKey, cfg *config.Config) error {
 	for _, domain := range cfg.Domains {
 		domains = append(domains, "smtp."+domain)
 		domains = append(domains, "pop."+domain)
+		domains = append(domains, "imap."+domain)
 	}
 
 	request := certificate.ObtainRequest{
@@ -185,6 +206,7 @@ func generateCertificate(privateKey *ecdsa.PrivateKey, cfg *config.Config, newAc
 	for _, domain := range cfg.Domains {
 		domains = append(domains, "smtp."+domain)
 		domains = append(domains, "pop."+domain)
+		domains = append(domains, "imap."+domain)
 	}
 
 	request := certificate.ObtainRequest{
@@ -225,7 +247,7 @@ func generateCertificate(privateKey *ecdsa.PrivateKey, cfg *config.Config, newAc
 
 func GenSSL(update bool) error {
 
-	cfg, err := setup.ReadConfig()
+	cfg, err := config.ReadConfig()
 	if err != nil {
 		panic(err)
 	}
@@ -249,38 +271,47 @@ func GenSSL(update bool) error {
 }
 
 // CheckSSLCrtInfo 返回证书过期剩余天数
-func CheckSSLCrtInfo() (int, time.Time, error) {
+func CheckSSLCrtInfo() (int, time.Time, bool, error) {
 
-	cfg, err := setup.ReadConfig()
+	cfg, err := config.ReadConfig()
 	if err != nil {
 		panic(err)
 	}
 	// load cert and key by tls.LoadX509KeyPair
 	tlsCert, err := tls.LoadX509KeyPair(cfg.SSLPublicKeyPath, cfg.SSLPrivateKeyPath)
 	if err != nil {
-		return -1, time.Now(), errors.Wrap(err)
+		return -1, time.Now(), true, errors.Wrap(err)
 	}
 
 	cert, err := x509.ParseCertificate(tlsCert.Certificate[0])
 
 	if err != nil {
-		return -1, time.Now(), errors.Wrap(err)
+		return -1, time.Now(), true, errors.Wrap(err)
+	}
+
+	nameMatchFail := true
+	for _, name := range cert.DNSNames {
+		if strings.Contains(name, "imap") {
+			nameMatchFail = false
+			break
+		}
 	}
 
 	// 检查过期时间
 	hours := cert.NotAfter.Sub(time.Now()).Hours()
 
 	if hours <= 0 {
-		return -1, time.Now(), errors.New("Certificate has expired")
+		return -1, time.Now(), nameMatchFail, errors.New("Certificate has expired")
 	}
 
-	return cast.ToInt(hours / 24), cert.NotAfter, nil
+	return cast.ToInt(hours / 24), cert.NotAfter, nameMatchFail, nil
 }
 
 func Update(needRestart bool) {
 	if config.Instance != nil && config.Instance.IsInit && (config.Instance.SSLType == config.SSLTypeAutoHTTP || config.Instance.SSLType == config.SSLTypeAutoDNS) {
-		days, _, err := CheckSSLCrtInfo()
-		if days < 30 || err != nil {
+		days, _, nameMatchFail, err := CheckSSLCrtInfo()
+
+		if days < 30 || err != nil || nameMatchFail {
 			if err != nil {
 				log.Errorf("SSL Check Error, Update SSL Certificate. Error Info :%+v", err)
 			} else {

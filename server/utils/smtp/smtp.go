@@ -23,8 +23,8 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"github.com/Jinnrry/pmail/config"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"net/smtp"
@@ -69,6 +69,10 @@ func Dial(addr, fromDomain string) (*Client, error) {
 
 // with tls
 func DialTls(addr, domain, fromDomain string) (*Client, error) {
+	if domain == "" {
+		domain = fromDomain
+	}
+
 	// TLS config
 	tlsconfig := &tls.Config{
 		InsecureSkipVerify: true,
@@ -247,7 +251,7 @@ func (c *Client) Auth(a smtp.Auth) error {
 	}
 	resp64 := make([]byte, encoding.EncodedLen(len(resp)))
 	encoding.Encode(resp64, resp)
-	code, msg64, err := c.cmd(0, strings.TrimSpace(fmt.Sprintf("AUTH %s %s", mech, resp64)))
+	code, msg64, err := c.cmd(0, "AUTH %s %s", mech, resp64)
 	for err == nil {
 		var msg []byte
 		switch code {
@@ -273,7 +277,7 @@ func (c *Client) Auth(a smtp.Auth) error {
 		}
 		resp64 = make([]byte, encoding.EncodedLen(len(resp)))
 		encoding.Encode(resp64, resp)
-		code, msg64, err = c.cmd(0, string(resp64))
+		code, msg64, err = c.cmd(0, "%s", string(resp64))
 	}
 	return err
 }
@@ -407,6 +411,9 @@ func SendMailWithTls(domain string, addr string, a smtp.Auth, from string, fromD
 // library.
 // 修复TSL验证问题
 func SendMail(domain string, addr string, a smtp.Auth, from string, fromDomain string, to []string, msg []byte) error {
+
+	log.Debugf("SendMail,%s ,%s ,%s ,%s ,%v ", domain, addr, from, fromDomain, to)
+
 	if err := validateLine(from); err != nil {
 		return err
 	}

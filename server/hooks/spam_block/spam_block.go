@@ -102,11 +102,16 @@ func (s *SpamBlock) ReceiveParseAfter(ctx *context.Context, email *parsemail.Ema
 		return
 	}
 
+	content := tools.Trim(tools.TrimHtml(string(email.HTML)))
+	if content == "" {
+		content = tools.Trim(string(email.Text))
+	}
+
 	reqData := ApiRequest{
 		Instances: []InstanceItem{
 			{
 				Token: []string{
-					fmt.Sprintf("%s %s", email.Subject, tools.Trim(tools.TrimHtml(string(email.HTML)))),
+					fmt.Sprintf("%s %s", email.Subject, content),
 				},
 			},
 		},
@@ -157,7 +162,11 @@ func (s *SpamBlock) ReceiveParseAfter(ctx *context.Context, email *parsemail.Ema
 	}
 
 	if maxClass != 0 && maxScore > s.cfg.Threshold/100 {
-		email.Status = 3
+		if maxClass == 2 {
+			email.Status = 3
+		} else {
+			email.Status = 5
+		}
 	}
 }
 
@@ -188,7 +197,7 @@ func NewSpamBlockHook() *SpamBlock {
 	}
 
 	if pluginConfig.Threshold == 0 {
-		pluginConfig.Threshold = 80
+		pluginConfig.Threshold = 20
 	}
 
 	hc := &http.Client{

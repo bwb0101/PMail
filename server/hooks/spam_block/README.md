@@ -14,7 +14,7 @@ Request的形式提交机器学习的各类样本数据。
 
 # 如何运行
 
-1、下载[emotion_model.zip](https://github.com/Jinnrry/PMail/releases/tag/v2.6.1)或者自己训练模型
+1、下载[emotion_model.zip](https://github.com/Jinnrry/PMail/releases/tag/v2.8.3)或者自己训练模型
 
 2、使用docker运行tensorflow模型
 `docker run -d -p 127.0.0.1:8501:8501   \
@@ -35,7 +35,7 @@ curl -X POST http://localhost:8501/v1/models/emotion_model:predict -d '{
 
 将得到类似输出：
 
-```json
+```jsonc
 {
   "predictions": [
     [

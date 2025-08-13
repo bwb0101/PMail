@@ -1,13 +1,7 @@
 package smtp_server
 
 import (
-	"crypto/tls"
 	"database/sql"
-	"net"
-	"strings"
-	"time"
-
-	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/db"
 	"github.com/Jinnrry/pmail/models"
 	"github.com/Jinnrry/pmail/utils/context"
@@ -17,6 +11,8 @@ import (
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	log "github.com/sirupsen/logrus"
+	"net"
+	"strings"
 )
 
 // The Backend implements SMTP server methods.
@@ -60,7 +56,7 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 	}
 
 	if mech == sasl.Login {
-		return sasl.NewLoginServer(func(username, password string) error {
+		return NewLoginServer(func(username, password string) error {
 			return s.AuthPlain(username, password)
 		}), nil
 	}
@@ -118,72 +114,4 @@ func (s *Session) Reset() {}
 
 func (s *Session) Logout() error {
 	return nil
-}
-
-var instance *smtp.Server
-var instanceTls *smtp.Server
-
-func StartWithTLS() {
-	be := &Backend{}
-
-	instanceTls = smtp.NewServer(be)
-
-	instanceTls.Addr = ":465"
-	instanceTls.Domain = config.Instance.Domain
-	instanceTls.ReadTimeout = time.Second * 120
-	instanceTls.WriteTimeout = time.Second * 120
-	instanceTls.MaxMessageBytes = 1024 * 1024 * 150 // 最大150M附件
-	instanceTls.MaxRecipients = 50
-	// force TLS for auth
-	instanceTls.AllowInsecureAuth = true
-	// Load the certificate and key
-	cer, err := tls.LoadX509KeyPair(config.Instance.SSLPublicKeyPath, config.Instance.SSLPrivateKeyPath)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	// Configure the TLS support
-	instanceTls.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cer}}
-
-	log.Println("Starting Smtp With SSL Server Port:", instanceTls.Addr)
-	if err := instanceTls.ListenAndServeTLS(); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func Start() {
-	be := &Backend{}
-
-	instance = smtp.NewServer(be)
-
-	instance.Addr = ":25"
-	instance.Domain = config.Instance.Domain
-	instance.ReadTimeout = time.Second * 120
-	instance.WriteTimeout = time.Second * 120
-	instance.MaxMessageBytes = 1024 * 1024 * 150
-	instance.MaxRecipients = 50
-	// force TLS for auth
-	instance.AllowInsecureAuth = false
-	// Load the certificate and key
-	cer, err := tls.LoadX509KeyPair(config.Instance.SSLPublicKeyPath, config.Instance.SSLPrivateKeyPath)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	// Configure the TLS support
-	instance.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cer}}
-
-	log.Println("Starting Smtp Server Port:", instance.Addr)
-	if err := instance.ListenAndServe(); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func Stop() {
-	if instance != nil {
-		instance.Close()
-	}
-	if instanceTls != nil {
-		instanceTls.Close()
-	}
 }

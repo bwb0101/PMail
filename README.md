@@ -57,10 +57,10 @@ First go to [spamhaus](https://check.spamhaus.org/) and check your domain name a
 
 Or
 
-`docker run -p 25:25 -p 80:80 -p 443:443 -p 110:110 -p 465:465 -p 995:995 -v $(pwd)/config:/work/config ghcr.io/jinnrry/pmail:latest`
+`docker run -p 25:25 -p 80:80 -p 443:443 -p 110:110 -p 465:465 -p 587:587 -p 995:995 -p 993:993 -v $(pwd)/config:/work/config ghcr.io/jinnrry/pmail:latest`
 
 > [!IMPORTANT]
-> If your server has a firewall turned on, you need to open ports 25, 80, 110, 443, 465, 995
+> If your server has a firewall turned on, you need to open ports 25, 80, 110, 443, 465,587, 993, 995
 
 ## 3、Configuration
 
@@ -75,7 +75,7 @@ use [https://www.mail-tester.com/](https://www.mail-tester.com/) for checking.
 
 # Configuration file format description
 
-```json
+```jsonc
 {
   "logLevel": "info", //log output level
   "domain": "domain.com", // Your domain
@@ -102,8 +102,11 @@ POP3 Port: 110/995(SSL)
 
 SMTP Server Address : smtp.[Your Domain]
 
-SMTP Port: 25/465(SSL)
+SMTP Port: 25/465、587(SSL)
 
+IMAP Server Address : imap.[Your Domain]
+
+IMAP Port: 993(SSL)
 # Plugin
 
 [WeChat Push](server/hooks/wechat_push/README.md)
@@ -148,4 +151,4 @@ The code is in `server` folder.
 
 # Thanks
 
-A special thanks to [Jetbrains](http://jetbrains.com/) for donating licenses to the project.
+Thanks to [Jetbrains](http://jetbrains.com/) for donating licenses to the project.

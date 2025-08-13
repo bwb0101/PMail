@@ -10,6 +10,23 @@ import (
 	"os"
 )
 
+func getType(emailId int) int {
+	var ue models.UserEmail
+	_, err := db.Instance.Table(&ue).Where("email_id = ?", emailId).Limit(1).Get(&ue)
+	if err != nil {
+		fmt.Println(err)
+	}
+	if ue.Status == 3 {
+		return 2
+	}
+
+	if ue.Status == 5 {
+		return 1
+	}
+
+	return 0
+}
+
 func main() {
 	args := os.Args
 
@@ -45,7 +62,11 @@ func main() {
 		}
 		for _, email := range emails {
 			start = email.Id
-			_, err = file.WriteString(fmt.Sprintf("0 \t%s %s\n", email.Subject, tools.Trim(tools.TrimHtml(email.Html.String))))
+			content := tools.Trim(tools.TrimHtml(email.Html.String))
+			if content == "" {
+				content = tools.Trim(email.Text.String)
+			}
+			_, err = file.WriteString(fmt.Sprintf("%d \t%s %s\n", getType(email.Id), email.Subject, content))
 			if err != nil {
 				fmt.Println(err)
 			}

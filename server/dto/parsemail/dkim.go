@@ -12,6 +12,7 @@ import (
 
 	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/utils/consts"
+	"github.com/Jinnrry/pmail/utils/context"
 	"github.com/emersion/go-msgauth/dkim"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ed25519"
@@ -26,7 +27,9 @@ var instance *Dkim
 func Init() {
 	privateKey, err := loadPrivateKey(config.Instance.DkimPrivateKeyPath)
 	if err != nil {
-		panic("DKIM load fail! Please set dkim! dkim私钥加载失败！请先设置dkim秘钥：" + err.Error())
+		panic(config.Instance.DkimPrivateKeyPath +
+			" DKIM load fail! Please set dkim!  dkim私钥加载失败！请先设置dkim秘钥" +
+			err.Error())
 	}
 
 	instance = &Dkim{
@@ -81,11 +84,15 @@ func (p *Dkim) Sign(msgData string) []byte {
 	return b.Bytes()
 }
 
-func Check(mail io.Reader) bool {
+func Check(ctx *context.Context, mail io.Reader) bool {
 
 	verifications, err := dkim.Verify(mail)
 	if err != nil {
-		log.Println(err)
+		log.WithContext(ctx).Warnf("DKIM Error:%v", err)
+	}
+
+	if len(verifications) == 0 {
+		return false
 	}
 
 	for _, v := range verifications {

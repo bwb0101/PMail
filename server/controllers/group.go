@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"github.com/Jinnrry/pmail/db"
 	"github.com/Jinnrry/pmail/dto"
 	"github.com/Jinnrry/pmail/dto/response"
 	"github.com/Jinnrry/pmail/i18n"
@@ -16,8 +15,15 @@ import (
 )
 
 func GetUserGroupList(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
+	defaultGroup := []*models.Group{
+		{models.INBOX, i18n.GetText(ctx.Lang, "inbox"), 0, 0, "/"},
+		{models.Junk, i18n.GetText(ctx.Lang, "junk"), 0, 0, "/"},
+		{models.Deleted, i18n.GetText(ctx.Lang, "deleted"), 0, 0, "/"},
+	}
+
 	infos := group.GetGroupList(ctx)
-	response.NewSuccessResponse(infos).FPrint(w)
+
+	response.NewSuccessResponse(append(defaultGroup, infos...)).FPrint(w)
 }
 
 func GetUserGroup(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
@@ -37,6 +43,10 @@ func GetUserGroup(ctx *context.Context, w http.ResponseWriter, req *http.Request
 				{
 					Label: i18n.GetText(ctx.Lang, "sketch"),
 					Tag:   dto.SearchTag{Type: 1, Status: 0}.ToString(),
+				},
+				{
+					Label: i18n.GetText(ctx.Lang, "junk"),
+					Tag:   dto.SearchTag{Type: -1, Status: 5}.ToString(),
 				},
 				{
 					Label: i18n.GetText(ctx.Lang, "deleted"),
@@ -67,13 +77,8 @@ func AddGroup(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 		log.WithContext(ctx).Errorf("%+v", err)
 	}
 
-	var newGroup models.Group = models.Group{
-		Name:     reqData.Name,
-		ParentId: reqData.ParentId,
-		UserId:   ctx.UserID,
-	}
+	newGroup, err := group.CreateGroup(ctx, reqData.Name, reqData.ParentId)
 
-	_, err = db.Instance.Insert(&newGroup)
 	if err != nil {
 		response.NewErrorResponse(response.ServerError, "DBError", err.Error()).FPrint(w)
 		return

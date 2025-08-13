@@ -11,6 +11,7 @@ import (
 	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	_ "modernc.org/sqlite"
+	"time"
 	"xorm.io/xorm"
 )
 
@@ -37,9 +38,11 @@ func Init(version string) error {
 		return errors.New("Database Type Error!")
 	}
 	if err != nil {
+		log.Errorf("DB init Error! %s", err.Error())
 		return errors.Wrap(err)
 	}
 
+	Instance.SetConnMaxLifetime(30 * time.Minute)
 	Instance.ShowSQL(false)
 	// 同步表结构
 	syncTables()
@@ -54,9 +57,17 @@ func Init(version string) error {
 		panic(err)
 	}
 
-	if version != "" && v.Info != version {
+	if version != "" && v.Info != version && version != "test" {
 		v.Info = version
-		Instance.Update(&v)
+		if v.Id == 0 {
+			Instance.Insert(&v)
+		} else {
+			Instance.Update(&v)
+		}
+	}
+
+	if config.Instance.LogLevel == "debug" {
+		Instance.ShowSQL(true)
 	}
 
 	return nil
